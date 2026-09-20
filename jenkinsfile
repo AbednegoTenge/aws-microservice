@@ -22,43 +22,43 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: "${AWS_CRED_ID}", usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                         
                         // 1. Authenticate Docker client against your AWS ECR Registry
-                        sh """
-                            export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-                            export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-                            export AWS_DEFAULT_REGION=${AWS_REGION}
-                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-
+                        sh '''
+                            set +x
+                            aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+                        '''
+                        
+                        sh '''
 
                             # Orders
                             docker tag node-microservices-orders:latest \
-                                "${ECR_REGISTRY}/${ECR_REPO_NAME}:orders-${IMAGE_TAG}"
+                                "$ECR_REGISTRY/$ECR_REPO_NAME:orders-$IMAGE_TAG"
 
                             docker tag node-microservices-orders:latest \
-                                "${ECR_REGISTRY}/${ECR_REPO_NAME}:orders-latest"
+                                "$ECR_REGISTRY/$ECR_REPO_NAME:orders-latest"
 
-                            docker push "${ECR_REGISTRY}/${ECR_REPO_NAME}:orders-${IMAGE_TAG}"
-                            docker push "${ECR_REGISTRY}/${ECR_REPO_NAME}:orders-latest"
+                            docker push "$ECR_REGISTRY/$ECR_REPO_NAME:orders-$IMAGE_TAG"
+                            docker push "$ECR_REGISTRY/$ECR_REPO_NAME:orders-latest"
 
                             # Products
                             docker tag node-microservices-products:latest \
-                                "${ECR_REGISTRY}/${ECR_REPO_NAME}:products-${IMAGE_TAG}"
+                                "$ECR_REGISTRY/$ECR_REPO_NAME:products-$IMAGE_TAG"
 
                             docker tag node-microservices-products:latest \
-                                "${ECR_REGISTRY}/${ECR_REPO_NAME}:products-latest"
+                                "$ECR_REGISTRY/$ECR_REPO_NAME:products-latest"
 
-                            docker push "${ECR_REGISTRY}/${ECR_REPO_NAME}:products-${IMAGE_TAG}"
-                            docker push "${ECR_REGISTRY}/${ECR_REPO_NAME}:products-latest"
+                            docker push "$ECR_REGISTRY/$ECR_REPO_NAME:products-$IMAGE_TAG"
+                            docker push "$ECR_REGISTRY/$ECR_REPO_NAME:products-latest"
 
                             # Inventory
                             docker tag node-microservices-inventory:latest \
-                                "${ECR_REGISTRY}/${ECR_REPO_NAME}:inventory-${IMAGE_TAG}"
+                                "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-$IMAGE_TAG"
 
                             docker tag node-microservices-inventory:latest \
-                                "${ECR_REGISTRY}/${ECR_REPO_NAME}:inventory-latest"
+                                "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-latest"
 
-                            docker push "${ECR_REGISTRY}/${ECR_REPO_NAME}:inventory-${IMAGE_TAG}"
-                            docker push "${ECR_REGISTRY}/${ECR_REPO_NAME}:inventory-latest"
-                        """
+                            docker push "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-$IMAGE_TAG"
+                            docker push "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-latest"
+                        '''
                         
                     }
             }
