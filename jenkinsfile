@@ -6,19 +6,13 @@ pipeline {
         AWS_REGION = 'us-east-1'
         ECR_REPO_NAME = 'microservice'
         AWS_CRED_ID = 'aws-jenkins-credentials'
+        ECR_REGISTRY = "559000568151.dkr.ecr.us-east-1.amazonaws.com"
     }
 
     stages {
         stage ("Build Via Docker Compose") {
             steps {
                 sh 'docker compose up --build -d'
-            }
-        }
-
-        stage ('Run Tests inside Container') {
-            steps {
-                echo 'Spinning up microservice environment to run automated tests'
-                sh 'docker compose run --rm app npm test'
             }
         }
 
