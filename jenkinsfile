@@ -63,12 +63,84 @@ pipeline {
                     }
             }
         }
+        stage ('Terraform Init and Plan') {
+            agent {
+                docker {
+                    image 'hashicorp/terraform:1.10.0'
+                    args '-u root'
+                    reuseNode true
+                }
+            }
+            steps{
+                withCredentials([
+                    usernamePassword(credentialsId: "${AWS_CRED_ID}"),
+                    usernameVaribale: 'AWS_ACCESS_KEY_ID',
+                    passwordVaribale: 'AWS_SECRET_ACCESS_KEY'
+                    ]) {
+                        sh '''
+                            set -e
+                            echo "Initializing Terraform..."
+                            terraform init -input=false
+
+                            echo "Validationg Terraform configuration"
+                            terraform validate
+
+                            echo "Creating Terraform execution plan"
+                            terraform plan -input=false -out=tfplan
+
+                            echo "Terraform plan created successfully
+                        '''
+                    }
+            }
+        }
+        stage ('Terraform Apply') {
+            agent {
+                docker {
+                    image 'hashicorp/terraform:1.10.0'
+                    args '-u root'
+                    reuseNode true
+                }
+            }
+            steps {
+                withCredentials([
+                    usernamePassword(crendentialsId: "${AWS_CRED_ID}"),
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                ]) {
+                    sh '''
+                        set -e
+                        echo "Applying Terraform plan"
+                        terraform apply -input=false -auto-approve tfplan
+                        echo "Terraform Apply applied successfully"
+                    '''
+                }
+            }
+        }
     }
     post {
         always {
-            echo 'Cleaning up local images...'
-            sh "docker rmi ${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG} || true"
-            sh "docker compose down --volumes || true"
+
+            echo 'Cleaning up Docker resources...'
+
+            sh '''
+                docker compose down --volumes || true
+            '''
+
+            sh '''
+                docker rmi \
+                    "$ECR_REGISTRY/$ECR_REPO_NAME:orders-$IMAGE_TAG" \
+                    "$ECR_REGISTRY/$ECR_REPO_NAME:products-$IMAGE_TAG" \
+                    "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-$IMAGE_TAG" \
+                    || true
+            '''
+        }
+
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'Pipeline failed. Check the Jenkins console logs.'
         }
     }
 }
