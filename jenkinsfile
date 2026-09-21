@@ -99,10 +99,10 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    usernamePassword(crendentialsId: "${AWS_CRED_ID}"),
+                    usernamePassword(crendentialsId: "${AWS_CRED_ID}",
                     usernameVariable: 'AWS_ACCESS_KEY_ID',
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]) {
+                )]) {
                     sh '''
                         set -e
                         echo "Applying Terraform plan"
