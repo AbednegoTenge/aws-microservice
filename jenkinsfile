@@ -72,7 +72,7 @@ pipeline {
                 }
             }
             steps{
-                withCredentials([usernamePassword(credentialsId: "${AWS_CRED_ID}"), usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVaribale: 'AWS_SECRET_ACCESS_KEY']) {
+                withCredentials([usernamePassword(credentialsId: "${AWS_CRED_ID}"), usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY']) {
                         sh '''
                             set -e
                             echo "Initializing Terraform..."
