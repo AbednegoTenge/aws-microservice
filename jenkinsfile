@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        BUILDX_NO_DEFAULT_ATTESTATIONS = '1'
         AWS_ACCOUNT_ID = '559000568151'
         AWS_REGION = 'us-east-1'
         ECR_REPO_NAME = 'microservice'
