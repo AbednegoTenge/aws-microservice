@@ -7,3 +7,8 @@ resource "aws_ecr_repository" "microservice" {
     scan_on_push = true
   }
 }
+
+import {
+  to = aws_ecr_repository.microservice
+  id = "microservice"
+}
