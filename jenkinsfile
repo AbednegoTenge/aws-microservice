@@ -20,13 +20,13 @@ pipeline {
         stage ('Push to Docker Registry') {
             steps {
                 withCredentials([usernamePassword(credentialsId: "${AWS_CRED_ID}", usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                        
+
                         // 1. Authenticate Docker client against your AWS ECR Registry
                         sh '''
                             set +x
                             aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
                         '''
-                        
+
                         sh '''
 
                             # Orders
@@ -59,7 +59,7 @@ pipeline {
                             docker push "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-$IMAGE_TAG"
                             docker push "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-latest"
                         '''
-                        
+
                     }
             }
         }
@@ -78,13 +78,13 @@ pipeline {
                             echo "Initializing Terraform..."
                             terraform init -input=false
 
-                            echo "Validationg Terraform configuration"
+                            echo "Validating Terraform configuration"
                             terraform validate
 
                             echo "Creating Terraform execution plan"
                             terraform plan -input=false -out=tfplan
 
-                            echo "Terraform plan created successfully
+                            echo "Terraform plan created successfully"
                         '''
                     }
             }
@@ -99,7 +99,7 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    usernamePassword(crendentialsId: "${AWS_CRED_ID}",
+                    usernamePassword(credentialsId: "${AWS_CRED_ID}",
                     usernameVariable: 'AWS_ACCESS_KEY_ID',
                     passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
