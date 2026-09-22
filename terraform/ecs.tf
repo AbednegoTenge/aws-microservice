@@ -78,8 +78,8 @@ resource "aws_iam_role_policy" "execution_secrets" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["secretsmanager:GetSecretValue"]
+        Effect = "Allow"
+        Action = ["secretsmanager:GetSecretValue"]
         Resource = [
           aws_db_instance.orders_db.master_user_secret[0].secret_arn,
           aws_db_instance.products_db.master_user_secret[0].secret_arn,
@@ -156,8 +156,8 @@ resource "aws_ecs_task_definition" "products" {
   depends_on               = [aws_cloudwatch_log_group.products, aws_iam_role_policy_attachment.ecs_task_execution]
   container_definitions = jsonencode([
     {
-      name      = "products"
-      image     = "${aws_ecr_repository.microservice.repository_url}@${data.aws_ecr_image.products.image_digest}"
+      name  = "products"
+      image = "${aws_ecr_repository.microservice.repository_url}@${data.aws_ecr_image.products.image_digest}"
       secrets = [
         {
           name      = "DB_USERNAME"
@@ -208,8 +208,8 @@ resource "aws_ecs_task_definition" "inventory" {
   depends_on               = [aws_cloudwatch_log_group.inventory, aws_iam_role_policy_attachment.ecs_task_execution]
   container_definitions = jsonencode([
     {
-      name      = "inventory"
-      image     = "${aws_ecr_repository.microservice.repository_url}@${data.aws_ecr_image.inventory.image_digest}"
+      name  = "inventory"
+      image = "${aws_ecr_repository.microservice.repository_url}@${data.aws_ecr_image.inventory.image_digest}"
       secrets = [
         {
           name      = "DB_USERNAME"

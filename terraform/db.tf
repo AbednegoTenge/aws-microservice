@@ -15,7 +15,7 @@ resource "aws_db_instance" "orders_db" {
   multi_az       = true
 
   manage_master_user_password = true
-  username                    = "admin"
+  username                    = "dbadmin"
 
   vpc_security_group_ids = [
     aws_security_group.orders_sg_db.id
@@ -45,7 +45,7 @@ resource "aws_db_instance" "products_db" {
   multi_az       = true
 
   manage_master_user_password = true
-  username                    = "admin"
+  username                    = "dbadmin"
 
   vpc_security_group_ids = [
     aws_security_group.products_sg_db.id
@@ -75,7 +75,7 @@ resource "aws_db_instance" "inventory_db" {
   multi_az       = true
 
   manage_master_user_password = true
-  username                    = "admin"
+  username                    = "dbadmin"
 
   vpc_security_group_ids = [
     aws_security_group.inventory_sg_db.id
