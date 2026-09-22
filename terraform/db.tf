@@ -1,5 +1,5 @@
 resource "aws_db_instance" "orders_db" {
-  allocated_storage     = 10
+  allocated_storage     = 30
   max_allocated_storage = 50
   storage_type          = "gp3"
 
@@ -29,7 +29,7 @@ resource "aws_db_instance" "orders_db" {
 
 
 resource "aws_db_instance" "products_db" {
-  allocated_storage     = 10
+  allocated_storage     = 30
   max_allocated_storage = 50
   storage_type          = "gp3"
 
@@ -59,7 +59,7 @@ resource "aws_db_instance" "products_db" {
 
 
 resource "aws_db_instance" "inventory_db" {
-  allocated_storage     = 10
+  allocated_storage     = 30
   max_allocated_storage = 50
   storage_type          = "gp3"
 
