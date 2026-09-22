@@ -6,7 +6,7 @@ app.use(express.json());
 const orders = new Map();
 const inventoryUrl = process.env.INVENTORY_URL || 'http://localhost:3002';
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'orders' }));
+app.get('/orders/health', (_req, res) => res.json({ status: 'ok', service: 'orders' }));
 app.get('/orders', (_req, res) => res.json([...orders.values()]));
 app.get('/orders/:id', (req, res) => {
   const order = orders.get(req.params.id);

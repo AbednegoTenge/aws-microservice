@@ -5,7 +5,7 @@ app.use(express.json());
 const stock = new Map([['p-100', 25], ['p-200', 10]]);
 const reservations = new Map();
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'inventory' }));
+app.get('/inventory/health', (_req, res) => res.json({ status: 'ok', service: 'inventory' }));
 app.get('/inventory/:productId', (req, res) => {
   const quantity = stock.get(req.params.productId);
   return quantity === undefined ? res.status(404).json({ error: 'Inventory item not found' }) : res.json({ productId: req.params.productId, quantity });

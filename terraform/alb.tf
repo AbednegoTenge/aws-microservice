@@ -20,7 +20,7 @@ resource "aws_lb_target_group" "orders" {
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
   health_check {
-    path                = "/health"
+    path                = "/orders/health"
     interval            = 30
     timeout             = 3
     healthy_threshold   = 2
@@ -35,7 +35,7 @@ resource "aws_lb_target_group" "products" {
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
   health_check {
-    path                = "/health"
+    path                = "/products/health"
     interval            = 30
     timeout             = 3
     healthy_threshold   = 2
@@ -50,7 +50,7 @@ resource "aws_lb_target_group" "inventory" {
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
   health_check {
-    path                = "/health"
+    path                = "/inventory/health"
     interval            = 30
     timeout             = 3
     healthy_threshold   = 2

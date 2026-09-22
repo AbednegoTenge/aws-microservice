@@ -8,7 +8,7 @@ const products = new Map([
   ['p-200', { id: 'p-200', name: 'Mechanical Keyboard', price: 89.99 }]
 ]);
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'products' }));
+app.get('/products/health', (_req, res) => res.json({ status: 'ok', service: 'products' }));
 app.get('/products', (_req, res) => res.json([...products.values()]));
 app.get('/products/:id', (req, res) => {
   const product = products.get(req.params.id);
