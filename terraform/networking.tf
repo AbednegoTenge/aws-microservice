@@ -241,3 +241,85 @@ resource "aws_vpc_security_group_ingress_rule" "orders_to_inventory" {
 
   description = "Allow Orders to reach Inventory service"
 }
+
+resource "aws_security_group" "products_sg_db" {
+  name_prefix = "sg_products_db"
+  description = "Security group for Products DB"
+  vpc_id      = aws_vpc.main.id
+
+
+  egress {
+    description = "Allow outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "products_to_products_sg_db" {
+  security_group_id            = aws_security_group.products_sg_db.id
+  referenced_security_group_id = aws_security_group.products.id
+
+  ip_protocol = "tcp"
+  from_port   = 5432
+  to_port     = 5432
+
+  description = "Allow Products to reach Products DB"
+}
+
+resource "aws_security_group" "orders_sg_db" {
+  name_prefix = "sg_orders_db"
+  description = "Security group for Orders DB"
+  vpc_id      = aws_vpc.main.id
+
+
+  egress {
+    description = "Allow outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "orders_to_orders_sg_db" {
+  security_group_id            = aws_security_group.orders_sg_db.id
+  referenced_security_group_id = aws_security_group.orders.id
+
+  ip_protocol = "tcp"
+  from_port   = 5432
+  to_port     = 5432
+
+  description = "Allow Orders to reach Orders DB"
+}
+
+resource "aws_security_group" "inventory_sg_db" {
+  name_prefix = "sg_inventory_db"
+  description = "Security group for Inventory DB"
+  vpc_id      = aws_vpc.main.id
+
+  egress {
+    description = "Allow outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "inventory_to_inventory_sg_db" {
+  security_group_id            = aws_security_group.inventory_sg_db.id
+  referenced_security_group_id = aws_security_group.inventory.id
+
+  ip_protocol = "tcp"
+  from_port   = 5432
+  to_port     = 5432
+
+  description = "Allow Inventory to reach Inventory DB"
+}
+
+resource "aws_db_subnet_group" "main" {
+  name       = "microservice-db-subnet-group"
+  subnet_ids = [aws_subnet.private1.id, aws_subnet.private2.id]
+}

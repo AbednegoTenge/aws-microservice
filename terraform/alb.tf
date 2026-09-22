@@ -87,7 +87,7 @@ resource "aws_lb_listener_rule" "orders" {
 
 resource "aws_lb_listener_rule" "products" {
   listener_arn = aws_lb_listener.http.arn
-  priority = 100
+  priority     = 100
   action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.products.arn

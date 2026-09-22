@@ -17,8 +17,40 @@ data "aws_iam_role" "ecs_task_execution" {
   name = "ecsTaskExecutionRole"
 }
 
-resource "aws_iam_role" "task_role" {
-  name = "ecs-task-role"
+resource "aws_iam_role" "orders_task_role" {
+  name = "ecs-orders-task-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "products_task_role" {
+  name = "ecs-products-task-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "inventory_task_role" {
+  name = "ecs-inventory-task-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -39,6 +71,25 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_role_policy" "execution_secrets" {
+  name = "ecs-execution-secrets"
+  role = data.aws_iam_role.ecs_task_execution.name
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Resource = [
+          aws_db_instance.orders_db.master_user_secret[0].secret_arn,
+          aws_db_instance.products_db.master_user_secret[0].secret_arn,
+          aws_db_instance.inventory_db.master_user_secret[0].secret_arn
+        ]
+      }
+    ]
+  })
+}
+
 
 resource "aws_ecs_task_definition" "orders" {
   family                   = "orders"
@@ -47,19 +98,30 @@ resource "aws_ecs_task_definition" "orders" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = data.aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.orders_task_role.arn
   depends_on               = [aws_cloudwatch_log_group.orders, aws_iam_role_policy_attachment.ecs_task_execution]
   container_definitions = jsonencode([
     {
-      name      = "orders"
-      image     = "${aws_ecr_repository.microservice.repository_url}@${data.aws_ecr_image.orders.image_digest}"
+      name  = "orders"
+      image = "${aws_ecr_repository.microservice.repository_url}@${data.aws_ecr_image.orders.image_digest}"
+      secrets = [
+        {
+          name      = "DB_USERNAME"
+          valueFrom = "${aws_db_instance.orders_db.master_user_secret[0].secret_arn}:username::"
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${aws_db_instance.orders_db.master_user_secret[0].secret_arn}:password::"
+        }
+      ]
       cpu       = 10
       memory    = 512
       essential = true
       environment = [
-        {
-          name  = "INVENTORY_URL"
-          value = "http://inventory:3002"
-        }
+        { name = "INVENTORY_URL", value = "http://inventory:3002" },
+        { name = "DB_HOST", value = aws_db_instance.orders_db.address },
+        { name = "DB_PORT", value = tostring(aws_db_instance.orders_db.port) },
+        { name = "DB_NAME", value = aws_db_instance.orders_db.db_name }
       ]
       portMappings = [
         {
@@ -90,14 +152,30 @@ resource "aws_ecs_task_definition" "products" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = data.aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.products_task_role.arn
   depends_on               = [aws_cloudwatch_log_group.products, aws_iam_role_policy_attachment.ecs_task_execution]
   container_definitions = jsonencode([
     {
       name      = "products"
       image     = "${aws_ecr_repository.microservice.repository_url}@${data.aws_ecr_image.products.image_digest}"
+      secrets = [
+        {
+          name      = "DB_USERNAME"
+          valueFrom = "${aws_db_instance.products_db.master_user_secret[0].secret_arn}:username::"
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${aws_db_instance.products_db.master_user_secret[0].secret_arn}:password::"
+        }
+      ]
       cpu       = 256
       memory    = 512
       essential = true
+      environment = [
+        { name = "DB_HOST", value = aws_db_instance.products_db.address },
+        { name = "DB_PORT", value = tostring(aws_db_instance.products_db.port) },
+        { name = "DB_NAME", value = aws_db_instance.products_db.db_name }
+      ]
       portMappings = [
         {
           name          = "products"
@@ -126,14 +204,30 @@ resource "aws_ecs_task_definition" "inventory" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = data.aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.inventory_task_role.arn
   depends_on               = [aws_cloudwatch_log_group.inventory, aws_iam_role_policy_attachment.ecs_task_execution]
   container_definitions = jsonencode([
     {
       name      = "inventory"
       image     = "${aws_ecr_repository.microservice.repository_url}@${data.aws_ecr_image.inventory.image_digest}"
+      secrets = [
+        {
+          name      = "DB_USERNAME"
+          valueFrom = "${aws_db_instance.inventory_db.master_user_secret[0].secret_arn}:username::"
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${aws_db_instance.inventory_db.master_user_secret[0].secret_arn}:password::"
+        }
+      ]
       cpu       = 256
       memory    = 512
       essential = true
+      environment = [
+        { name = "DB_HOST", value = aws_db_instance.inventory_db.address },
+        { name = "DB_PORT", value = tostring(aws_db_instance.inventory_db.port) },
+        { name = "DB_NAME", value = aws_db_instance.inventory_db.db_name }
+      ]
       portMappings = [
         {
           name          = "inventory-port"
