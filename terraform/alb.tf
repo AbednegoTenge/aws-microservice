@@ -21,7 +21,7 @@ resource "aws_lb_target_group" "orders" {
   target_type = "ip"
   health_check {
     path                = "/health"
-    interval            = 180
+    interval            = 30
     timeout             = 3
     healthy_threshold   = 2
     unhealthy_threshold = 2
@@ -30,13 +30,13 @@ resource "aws_lb_target_group" "orders" {
 
 resource "aws_lb_target_group" "products" {
   name        = "products-tg"
-  port        = 3002
+  port        = 3001
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
   health_check {
     path                = "/health"
-    interval            = 180
+    interval            = 30
     timeout             = 3
     healthy_threshold   = 2
     unhealthy_threshold = 2
@@ -45,13 +45,13 @@ resource "aws_lb_target_group" "products" {
 
 resource "aws_lb_target_group" "inventory" {
   name        = "inventory-tg"
-  port        = 3001
+  port        = 3002
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
   health_check {
     path                = "/health"
-    interval            = 180
+    interval            = 30
     timeout             = 3
     healthy_threshold   = 2
     unhealthy_threshold = 2
@@ -70,7 +70,7 @@ resource "aws_lb_listener" "http" {
 
 resource "aws_lb_listener_rule" "orders" {
   listener_arn = aws_lb_listener.http.arn
-  priority     = 100
+  priority     = 200
   action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.orders.arn
@@ -85,9 +85,26 @@ resource "aws_lb_listener_rule" "orders" {
   }
 }
 
+resource "aws_lb_listener_rule" "products" {
+  listener_arn = aws_lb_listener.http.arn
+  priority = 100
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.products.arn
+  }
+  condition {
+    path_pattern {
+      values = [
+        "/products",
+        "/products*"
+      ]
+    }
+  }
+}
+
 resource "aws_lb_listener_rule" "inventory" {
   listener_arn = aws_lb_listener.http.arn
-  priority     = 110
+  priority     = 300
   action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.inventory.arn
