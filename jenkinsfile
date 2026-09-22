@@ -72,21 +72,23 @@ pipeline {
                 }
             }
             steps{
-                withCredentials([usernamePassword(credentialsId: "${AWS_CRED_ID}", usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                        sh '''
-                            set -e
-                            echo "Initializing Terraform..."
-                            terraform init -input=false
+                dir('terraform') {
+                    withCredentials([usernamePassword(credentialsId: "${AWS_CRED_ID}", usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                            sh '''
+                                set -e
+                                echo "Initializing Terraform..."
+                                terraform init -input=false
 
-                            echo "Validating Terraform configuration"
-                            terraform validate
+                                echo "Validating Terraform configuration"
+                                terraform validate
 
-                            echo "Creating Terraform execution plan"
-                            terraform plan -input=false -out=tfplan
+                                echo "Creating Terraform execution plan"
+                                terraform plan -input=false -out=tfplan
 
-                            echo "Terraform plan created successfully"
-                        '''
-                    }
+                                echo "Terraform plan created successfully"
+                            '''
+                        }
+                }
             }
         }
         stage ('Terraform Apply') {
@@ -98,17 +100,19 @@ pipeline {
                 }
             }
             steps {
-                withCredentials([
-                    usernamePassword(credentialsId: "${AWS_CRED_ID}",
-                    usernameVariable: 'AWS_ACCESS_KEY_ID',
-                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                )]) {
-                    sh '''
-                        set -e
-                        echo "Applying Terraform plan"
-                        terraform apply -input=false -auto-approve tfplan
-                        echo "Terraform Apply applied successfully"
-                    '''
+                dir('terraform') {
+                    withCredentials([
+                        usernamePassword(credentialsId: "${AWS_CRED_ID}",
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )]) {
+                        sh '''
+                            set -e
+                            echo "Applying Terraform plan"
+                            terraform apply -input=false -auto-approve tfplan
+                            echo "Terraform Apply applied successfully"
+                        '''
+                    }
                 }
             }
         }
