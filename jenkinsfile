@@ -8,90 +8,200 @@ pipeline {
         AWS_CRED_ID = 'aws-jenkins-credentials'
         ECR_REGISTRY = "559000568151.dkr.ecr.us-east-1.amazonaws.com"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
+
+        BUILD_ORDERS = 'false'
+        BUILD_PRODUCTS = 'false'
+        BUILD_INVENTORY = 'false'
     }
 
     stages {
-        stage ("Build Via Docker Compose") {
+
+        stage('Detect Changed Services') {
             steps {
-                sh 'docker compose up --build -d'
-            }
-        }
+                script {
+                    echo "Previous commit: ${env.GIT_PREVIOUS_COMMIT}"
+                    echo "Current commit:  ${env.GIT_COMMIT}"
 
-        stage ('Push to Docker Registry') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: "${AWS_CRED_ID}", usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    def changedFiles
 
-                        // 1. Authenticate Docker client against your AWS ECR Registry
-                        sh '''
-                            set +x
-                            aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
-                        '''
-
-                        sh '''
-
-                            # Orders
-                            docker tag node-microservices-orders:latest \
-                                "$ECR_REGISTRY/$ECR_REPO_NAME:orders-$IMAGE_TAG"
-
-                            docker tag node-microservices-orders:latest \
-                                "$ECR_REGISTRY/$ECR_REPO_NAME:orders-latest"
-
-                            docker push "$ECR_REGISTRY/$ECR_REPO_NAME:orders-$IMAGE_TAG"
-                            docker push "$ECR_REGISTRY/$ECR_REPO_NAME:orders-latest"
-
-                            # Products
-                            docker tag node-microservices-products:latest \
-                                "$ECR_REGISTRY/$ECR_REPO_NAME:products-$IMAGE_TAG"
-
-                            docker tag node-microservices-products:latest \
-                                "$ECR_REGISTRY/$ECR_REPO_NAME:products-latest"
-
-                            docker push "$ECR_REGISTRY/$ECR_REPO_NAME:products-$IMAGE_TAG"
-                            docker push "$ECR_REGISTRY/$ECR_REPO_NAME:products-latest"
-
-                            # Inventory
-                            docker tag node-microservices-inventory:latest \
-                                "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-$IMAGE_TAG"
-
-                            docker tag node-microservices-inventory:latest \
-                                "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-latest"
-
-                            docker push "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-$IMAGE_TAG"
-                            docker push "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-latest"
-                        '''
-
+                    if (env.GIT_PREVIOUS_COMMIT) {
+                        changedFiles = sh(
+                            script: """
+                                git diff --name-only ${env.GIT_PREVIOUS_COMMIT} ${env.GIT_COMMIT}
+                            """,
+                            returnStdout: true
+                        ).trim()
+                    } else {
+                        // First build: build everything
+                        changedFiles = "orders/ products/ inventory/"
                     }
-            }
-        }
-        stage ('Terraform Init and Plan') {
-            agent {
-                docker {
-                    image 'hashicorp/terraform:1.10.0'
-                    args '-u root --entrypoint=""'
-                    reuseNode true
+
+                    echo "Changed files:"
+                    echo changedFiles
+
+                    if (changedFiles.contains("orders/")) {
+                        env.BUILD_ORDERS = 'true'
+                    }
+
+                    if (changedFiles.contains("products/")) {
+                        env.BUILD_PRODUCTS = 'true'
+                    }
+
+                    if (changedFiles.contains("inventory/")) {
+                        env.BUILD_INVENTORY = 'true'
+                    }
+
+                    // If Docker Compose changes, rebuild all services
+                    if (changedFiles.contains("docker-compose.yml")) {
+                        env.BUILD_ORDERS = 'true'
+                        env.BUILD_PRODUCTS = 'true'
+                        env.BUILD_INVENTORY = 'true'
+                    }
+
+                    echo "========================================"
+                    echo "Orders:   ${env.BUILD_ORDERS}"
+                    echo "Products: ${env.BUILD_PRODUCTS}"
+                    echo "Inventory: ${env.BUILD_INVENTORY}"
+                    echo "========================================"
                 }
             }
-            steps{
-                dir('terraform') {
-                    withCredentials([usernamePassword(credentialsId: "${AWS_CRED_ID}", usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+        }
+
+
+        stage('Build Orders') {
+            when {
+                environment name: 'BUILD_ORDERS', value: 'true'
+            }
+
+            steps {
+                echo "Building Orders service..."
+
+                sh '''
+                    docker compose build orders
+                '''
+            }
+        }
+
+
+        stage('Build Products') {
+            when {
+                environment name: 'BUILD_PRODUCTS', value: 'true'
+            }
+
+            steps {
+                echo "Building Products service..."
+
+                sh '''
+                    docker compose build products
+                '''
+            }
+        }
+
+
+        stage('Build Inventory') {
+            when {
+                environment name: 'BUILD_INVENTORY', value: 'true'
+            }
+
+            steps {
+                echo "Building Inventory service..."
+
+                sh '''
+                    docker compose build inventory
+                '''
+            }
+        }
+
+
+        stage('Push Changed Images') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: "${AWS_CRED_ID}",
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+
+                    sh '''
+                        set -e
+
+                        echo "Logging into Amazon ECR..."
+
+                        aws ecr get-login-password \
+                            --region "$AWS_REGION" | \
+                            docker login \
+                            --username AWS \
+                            --password-stdin "$ECR_REGISTRY"
+                    '''
+
+                    script {
+                        if (env.BUILD_ORDERS == 'true') {
                             sh '''
                                 set -e
-                                echo "Initializing Terraform..."
-                                terraform init -input=false
 
-                                echo "Validating Terraform configuration"
-                                terraform validate
+                                echo "Pushing Orders image..."
 
-                                echo "Creating Terraform execution plan"
-                                terraform plan -input=false -out=tfplan
+                                docker tag node-microservices-orders:latest \
+                                    "$ECR_REGISTRY/$ECR_REPO_NAME:orders-$IMAGE_TAG"
 
-                                echo "Terraform plan created successfully"
+                                docker tag node-microservices-orders:latest \
+                                    "$ECR_REGISTRY/$ECR_REPO_NAME:orders-latest"
+
+                                docker push \
+                                    "$ECR_REGISTRY/$ECR_REPO_NAME:orders-$IMAGE_TAG"
+
+                                docker push \
+                                    "$ECR_REGISTRY/$ECR_REPO_NAME:orders-latest"
                             '''
                         }
+
+                        if (env.BUILD_PRODUCTS == 'true') {
+                            sh '''
+                                set -e
+
+                                echo "Pushing Products image..."
+
+                                docker tag node-microservices-products:latest \
+                                    "$ECR_REGISTRY/$ECR_REPO_NAME:products-$IMAGE_TAG"
+
+                                docker tag node-microservices-products:latest \
+                                    "$ECR_REGISTRY/$ECR_REPO_NAME:products-latest"
+
+                                docker push \
+                                    "$ECR_REGISTRY/$ECR_REPO_NAME:products-$IMAGE_TAG"
+
+                                docker push \
+                                    "$ECR_REGISTRY/$ECR_REPO_NAME:products-latest"
+                            '''
+                        }
+
+                        if (env.BUILD_INVENTORY == 'true') {
+                            sh '''
+                                set -e
+
+                                echo "Pushing Inventory image..."
+
+                                docker tag node-microservices-inventory:latest \
+                                    "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-$IMAGE_TAG"
+
+                                docker tag node-microservices-inventory:latest \
+                                    "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-latest"
+
+                                docker push \
+                                    "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-$IMAGE_TAG"
+
+                                docker push \
+                                    "$ECR_REGISTRY/$ECR_REPO_NAME:inventory-latest"
+                            '''
+                        }
+                    }
                 }
             }
         }
-        stage ('Terraform Apply') {
+
+
+        stage('Terraform Init and Plan') {
             agent {
                 docker {
                     image 'hashicorp/terraform:1.10.0'
@@ -99,32 +209,80 @@ pipeline {
                     reuseNode true
                 }
             }
+
             steps {
                 dir('terraform') {
                     withCredentials([
-                        usernamePassword(credentialsId: "${AWS_CRED_ID}",
-                        usernameVariable: 'AWS_ACCESS_KEY_ID',
-                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                    )]) {
+                        usernamePassword(
+                            credentialsId: "${AWS_CRED_ID}",
+                            usernameVariable: 'AWS_ACCESS_KEY_ID',
+                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                        )
+                    ]) {
+
                         sh '''
                             set -e
-                            echo "Applying Terraform plan"
-                            terraform apply -input=false -auto-approve tfplan
-                            echo "Terraform Apply applied successfully"
+
+                            echo "Initializing Terraform..."
+                            terraform init -input=false
+
+                            echo "Validating Terraform configuration..."
+                            terraform validate
+
+                            echo "Creating Terraform execution plan..."
+                            terraform plan \
+                                -input=false \
+                                -out=tfplan
+
+                            echo "Terraform plan created successfully."
+                        '''
+                    }
+                }
+            }
+        }
+
+
+        stage('Terraform Apply') {
+            agent {
+                docker {
+                    image 'hashicorp/terraform:1.10.0'
+                    args '-u root --entrypoint=""'
+                    reuseNode true
+                }
+            }
+
+            steps {
+                dir('terraform') {
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: "${AWS_CRED_ID}",
+                            usernameVariable: 'AWS_ACCESS_KEY_ID',
+                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                        )
+                    ]) {
+
+                        sh '''
+                            set -e
+
+                            echo "Applying Terraform plan..."
+
+                            terraform apply \
+                                -input=false \
+                                -auto-approve \
+                                tfplan
+
+                            echo "Terraform Apply completed successfully."
                         '''
                     }
                 }
             }
         }
     }
+
+
     post {
         always {
-
             echo 'Cleaning up Docker resources...'
-
-            sh '''
-                docker compose down --volumes || true
-            '''
 
             sh '''
                 docker rmi \
