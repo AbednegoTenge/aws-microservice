@@ -1,16 +1,19 @@
 services:
   products:
     build: ./products-service
+    platform: linux/amd64
     ports: ["3001:3001"]
     environment:
       PORT: 3001
   inventory:
     build: ./inventory-service
+    platform: linux/amd64
     ports: ["3002:3002"]
     environment:
       PORT: 3002
   orders:
     build: ./orders-service
+    platform: linux/amd64
     ports: ["3003:3003"]
     environment:
       PORT: 3003
